@@ -374,17 +374,12 @@ class Plugin(object):
                                   'pointsto': linkdest})
 
     def _copy_dir(self, srcpath):
-        try:
-            for afile in os.listdir(srcpath):
-                self._log_debug("recursively adding '%s' from '%s'"
-                                % (afile, srcpath))
-                self._do_copy_path(os.path.join(srcpath, afile), dest=None)
-        except OSError as e:
-            if e.errno == errno.ELOOP:
-                msg = "Too many levels of symbolic links copying"
-                self._log_error("_copy_dir: %s '%s'" % (msg, srcpath))
-                return
-            raise e
+        for root, dirs, files in os.walk(srcpath, topdown=True):
+            for name in files:
+                fullname = os.path.join(root, name)
+                self._log_debug("adding '%s' from '%s'"
+                                % (fullname, srcpath))
+                self._do_copy_path(fullname, dest=None)
 
     def _get_dest_for_srcpath(self, srcpath):
         if self.use_sysroot():
