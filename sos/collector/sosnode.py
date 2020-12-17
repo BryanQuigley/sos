@@ -781,6 +781,10 @@ class SosNode():
                 for line in res['stdout'].splitlines():
                     if fnmatch.fnmatch(line, '*sosreport-*tar*'):
                         path = line.strip()
+                    if line.startswith(" sha256\t"):
+                        self.manifest.add_field('sha256', line.split("\t")[1])
+                    if line.startswith(" md5\t"):
+                        self.manifest.add_field('md5', line.split("\t")[1])
             else:
                 err = self.determine_sos_error(res['status'], res['stdout'])
                 self.log_debug("Error running sosreport. rc = %s msg = %s"
@@ -857,10 +861,6 @@ class SosNode():
                 except Exception:
                     self.log_error('Failed to make archive readable')
                     return False
-                try:
-                    self.make_archive_readable(self.sos_path + '.md5')
-                except Exception:
-                    self.log_debug('Failed to make md5 readable')
             self.soslog.info('Retrieving sosreport from %s' % self.address)
             self.ui_msg('Retrieving sosreport...')
             ret = self.retrieve_file(self.sos_path)
@@ -870,9 +870,6 @@ class SosNode():
             else:
                 self.log_error('Failed to retrieve sosreport')
                 raise SystemExit
-            self.hash_retrieved = self.retrieve_file(self.sos_path + '.md5')
-            if self.hash_retrieved:
-                self.file_list.append(self.sos_path.split('/')[-1] + '.md5')
             return True
         else:
             # sos sometimes fails but still returns a 0 exit code
@@ -901,7 +898,9 @@ class SosNode():
     def cleanup(self):
         """Remove the sos archive from the node once we have it locally"""
         self.remove_sos_archive()
-        if self.hash_retrieved:
+        if os.path.isfile(self.sos_path + '.sha256'):
+            self.remove_file(self.sos_path + '.sha256')
+        elif os.path.isfile(self.sos_path + '.md5'):
             self.remove_file(self.sos_path + '.md5')
         cleanup = self.host.set_cleanup_cmd()
         if cleanup:
